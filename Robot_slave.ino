@@ -28,11 +28,6 @@ void setup(){
   pinMode(speedPinB,OUTPUT);
   pinMode(fan,OUTPUT);
   
-  digitalWrite(bkwdRightPin,LOW);
-  digitalWrite(fwdRightPin,HIGH);
-  digitalWrite(bkwdLeftPin,LOW);
-  digitalWrite(fwdLeftPin,HIGH);
- 
   Wire.begin(address);
   Wire.onReceive(onRecv);
 }
@@ -40,7 +35,7 @@ void setup(){
 void loop(){
   switch(inVar){
   case (1):
-    speed = 255;
+    speed = 150;
     digitalWrite(bkwdRightPin,LOW);
     digitalWrite(fwdRightPin,HIGH);
     digitalWrite(bkwdLeftPin,LOW);
@@ -48,7 +43,7 @@ void loop(){
     break;
     
   case (2):
-    speed = 255;
+    speed = 150;
     digitalWrite(bkwdRightPin,HIGH);
     digitalWrite(fwdRightPin,LOW);
     digitalWrite(bkwdLeftPin,HIGH); 
@@ -56,7 +51,7 @@ void loop(){
     break;
     
   case (3):
-    speed = 255;
+    speed = 150;
     digitalWrite(bkwdRightPin,HIGH);
     digitalWrite(fwdRightPin,LOW); 
     digitalWrite(bkwdLeftPin,LOW);
@@ -64,7 +59,7 @@ void loop(){
     break;
     
   case (4):
-    speed = 255;
+    speed = 150;
     digitalWrite(bkwdRightPin,LOW);
     digitalWrite(fwdRightPin,HIGH);
     digitalWrite(bkwdLeftPin,HIGH);
@@ -73,8 +68,8 @@ void loop(){
       
   case (0):
     speed = 0;
-    digitalWrite(speedPinA,speed);
-    digitalWrite(speedPinB,speed);
+    digitalWrite(speedPinA,0);
+    digitalWrite(speedPinB,0);
     break;
     
   case (10):
@@ -118,7 +113,7 @@ void loop(){
     break;
   
   case (11):
- fanSpeed = 0; 
+    fanSpeed = 0; 
     break;
   
   case (12):
@@ -134,5 +129,4 @@ void loop(){
 
 void onRecv(int howMany) {
   inVar = Wire.read();    // receive byte as an integer
-  Serial.println(inVar);
 }
