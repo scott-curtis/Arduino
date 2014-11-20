@@ -5,8 +5,8 @@
 
 int trigPin = 13;
 int echoPin = 12;
-
-int RECV_PIN = 11;
+long duration;
+long distance;
 
 int firePin1 = 1;
 int firePin2 = 2;
@@ -14,31 +14,38 @@ int firePin3 = 3;
 
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
+int RECV_PIN = 11;
 decode_results results;
 IRrecv irrecv(RECV_PIN);
 String nextChar;
 
 int nextCmd;
+int prevCmd;
 unsigned long prevInput;
 
-boolean flag = false;
+boolean fanOnAuto = false;
 boolean canInput = true;
 
 void setup(){
  Serial.begin(9600); 
  Wire.begin();
  
+ pinMode(trigPin, OUTPUT);
+ pinMode(echoPin, INPUT);
+ 
  irrecv.enableIRIn();
   
  lcd.begin(16,2);
  lcd.autoscroll();
  lcd.setCursor(16,1);
- lcd.print("Hello");
+ lcd.print("Manual");
  
 }
 
 void loop(){
- long duration, distance;
+  
+  // Shared code in both modes
+  // 
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);      
   digitalWrite(trigPin, HIGH);
@@ -49,17 +56,28 @@ void loop(){
   // Calculate the distance in CM
   duration = pulseIn(echoPin, HIGH);
   distance = (duration/2) / 29.1;
-  
-
+  Serial.println(analogRead(firePin1));
+  Serial.println(analogRead(firePin2));
+  Serial.println(analogRead(firePin3));
  
  // Check if the user entered "#", to change modes between automatic and manual
  if (irrecv.decode(&results)) {
     if (results.value == 0xFF52AD) {
       canInput = !canInput;
       
-      // Stop all current commands before changing modes
+      // Show user which mode they are in. Hard to tell if remote signal broke otherwise
+      if (canInput == true) {
+        lcd.print("Manual"); 
+      }
+      else {
+        lcd.print("Automatic");
+      }
+      // Stop all current commands before changing modes (fan and motor stop signals.)
       Wire.beginTransmission(1);
       Wire.write(0);
+      Wire.endTransmission();
+      // Must send both fan and motor kill signals seperately, or the second command will be ignored and slave will crash.
+      Wire.beginTransmission(1);
       Wire.write(11);
       Wire.endTransmission();
     } 
@@ -154,11 +172,6 @@ void loop(){
         nextChar = "* ";
         nextCmd = 11;
         break;
-
-      case 0xFF52AD:
-        nextChar = "# ";
-        nextCmd = 12;
-        break;
    }
     Wire.beginTransmission(1);
     Wire.write(nextCmd);
@@ -173,24 +186,33 @@ void loop(){
  
  // If the robot is in automatic mode
  else {
+   Wire.beginTransmission(1);
+   Wire.write(1);
+   Wire.endTransmission();
+   
    // Check if the fire sensors are above the threshold
    // If they are,
-   if (analogRead(firePin1) > 400 || analogRead(firePin2) > 400 || analogRead(firePin3) > 400){
+   
+   if (analogRead(firePin1) > 200 || analogRead(firePin2) > 200 || analogRead(firePin3) > 200){
    nextChar = "^ ";
    nextCmd = 100;
-   flag = true;
+   fanOnAuto = true;
    
    // Turn on the fan
    Wire.beginTransmission(1);
    Wire.write(nextCmd);
    Wire.endTransmission();
+   // Stop the motors.
+   Wire.beginTransmission(1);
+   Wire.write(0);
+   Wire.endTransmission();
  }
  
  // If the fan was just on, and the readings dropped far below the threshold,
- if (flag == true && analogRead(firePin2) < 250){
+ if (fanOnAuto == true && analogRead(firePin2) < 150){
    nextChar = "OK ";
    nextCmd = 11;
-   flag = false;
+   fanOnAuto = false;
    
    // Turn off the fan.
    Wire.beginTransmission(1);
