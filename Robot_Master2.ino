@@ -56,9 +56,12 @@ void loop(){
   // Calculate the distance in CM
   duration = pulseIn(echoPin, HIGH);
   distance = (duration/2) / 29.1;
-  Serial.println(analogRead(firePin1));
-  Serial.println(analogRead(firePin2));
-  Serial.println(analogRead(firePin3));
+  
+  if (distance < 10){
+      Wire.beginTransmission(1);
+      Wire.write(0);
+      Wire.endTransmission();
+  }
  
  // Check if the user entered "#", to change modes between automatic and manual
  if (irrecv.decode(&results)) {
@@ -186,26 +189,40 @@ void loop(){
  
  // If the robot is in automatic mode
  else {
-   Wire.beginTransmission(1);
-   Wire.write(1);
-   Wire.endTransmission();
+   
+   // Turn, to try to find the nearest fire.
+   while (analogRead(firePin3) > analogRead(firePin2) || analogRead(firePin1) > analogRead(firePin2)){
+     if (analogRead(firePin1) > analogRead(firePin2)){
+       Wire.beginTransmission(1);
+       Wire.write(4);
+       Wire.endTransmission();
+     }
+     if (analogRead(firePin3) > analogRead(firePin2)) {
+       Wire.beginTransmission(1);
+       Wire.write(3);
+       Wire.endTransmission();
+     }
+   }
    
    // Check if the fire sensors are above the threshold
    // If they are,
-   
    if (analogRead(firePin1) > 200 || analogRead(firePin2) > 200 || analogRead(firePin3) > 200){
    nextChar = "^ ";
-   nextCmd = 100;
    fanOnAuto = true;
+   int right = analogRead(firePin1);
+   int mid = analogRead(firePin2);
+   int left = analogRead(firePin3);
    
    // Turn on the fan
    Wire.beginTransmission(1);
-   Wire.write(nextCmd);
+   Wire.write(100);
    Wire.endTransmission();
    // Stop the motors.
    Wire.beginTransmission(1);
    Wire.write(0);
    Wire.endTransmission();
+   // Make sure the fire is out.
+   delay(1000);
  }
  
  // If the fan was just on, and the readings dropped far below the threshold,
