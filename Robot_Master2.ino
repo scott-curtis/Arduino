@@ -24,6 +24,7 @@ int prevCmd;
 unsigned long prevInput;
 
 boolean fanOnAuto = false;
+boolean foundFire = false;
 boolean canInput = true;
 
 void setup(){
@@ -45,7 +46,7 @@ void setup(){
 void loop(){
   
   // Shared code in both modes
-  // 
+  // Read our ultrasonic sensor
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);      
   digitalWrite(trigPin, HIGH);
@@ -189,52 +190,83 @@ void loop(){
  
  // If the robot is in automatic mode
  else {
-   
+       
    // Turn, to try to find the nearest fire.
-   while (analogRead(firePin3) > analogRead(firePin2) || analogRead(firePin1) > analogRead(firePin2)){
-     if (analogRead(firePin1) > analogRead(firePin2)){
-       Wire.beginTransmission(1);
-       Wire.write(4);
-       Wire.endTransmission();
-     }
-     if (analogRead(firePin3) > analogRead(firePin2)) {
-       Wire.beginTransmission(1);
-       Wire.write(3);
-       Wire.endTransmission();
-     }
+   if (analogRead(firePin3) > analogRead(firePin2) && analogRead(firePin3) > 200){
+     foundFire = true;
+     Wire.beginTransmission(1);
+     Wire.write(4);
+     Wire.endTransmission();
    }
+   else if (analogRead(firePin1) > analogRead(firePin2) && analogRead(firePin1) > 200) {
+     foundFire = true;
+     Wire.beginTransmission(1);
+     Wire.write(3);
+     Wire.endTransmission();
+   }
+   else if (analogRead(firePin2) > analogRead(firePin1) && analogRead(firePin2) > analogRead(firePin3)){
+     foundFire = true;
+     Wire.beginTransmission(1);
+     Wire.write(1);
+     Wire.endTransmission();
+   }
+   else if (fanOnAuto == false && foundFire == false) {
+     Wire.beginTransmission(1);
+     Wire.write(3);
+     Wire.endTransmission();
+     delay(150);
+     
+     Wire.beginTransmission(1);
+     Wire.write(0);
+     Wire.endTransmission();
+   }
+   else {
+     Wire.beginTransmission(1);
+     Wire.write(0);
+     Wire.endTransmission();
+   }
+   
+ }
    
    // Check if the fire sensors are above the threshold
    // If they are,
-   if (analogRead(firePin1) > 200 || analogRead(firePin2) > 200 || analogRead(firePin3) > 200){
-   nextChar = "^ ";
-   fanOnAuto = true;
-   int right = analogRead(firePin1);
-   int mid = analogRead(firePin2);
-   int left = analogRead(firePin3);
+   if (analogRead(firePin2) > 300 && fanOnAuto == false){
+     fanOnAuto = true;
    
-   // Turn on the fan
-   Wire.beginTransmission(1);
-   Wire.write(100);
-   Wire.endTransmission();
-   // Stop the motors.
-   Wire.beginTransmission(1);
-   Wire.write(0);
-   Wire.endTransmission();
-   // Make sure the fire is out.
-   delay(1000);
+     // Turn on the fan
+     Wire.beginTransmission(1);
+     Wire.write(100);
+     Wire.endTransmission();
+     
+     // Stop the motors.
+     Wire.beginTransmission(1);
+     Wire.write(0);
+     Wire.endTransmission();
+     
+     // Make sure the fire is out.
+     delay (1000);
  }
  
- // If the fan was just on, and the readings dropped far below the threshold,
- if (fanOnAuto == true && analogRead(firePin2) < 150){
-   nextChar = "OK ";
-   nextCmd = 11;
+ // If the fan was on, and the fire didn't get put out,
+  else if (fanOnAuto == true && analogRead(firePin2) > 300){
+     Wire.beginTransmission(1);
+     Wire.write(100);
+     Wire.endTransmission();
+     
+     Wire.beginTransmission(1);
+     Wire.write(0);
+     Wire.endTransmission();
+     
+     delay(1000);
+  }
+ 
+ // If the fan was just on, and the fire did get put out,
+ else if (fanOnAuto == true && analogRead(firePin2) < 150){
    fanOnAuto = false;
-   
+   foundFire = false;
    // Turn off the fan.
    Wire.beginTransmission(1);
-   Wire.write(nextCmd);
+   Wire.write(11);
    Wire.endTransmission();
- }
  }
 }
